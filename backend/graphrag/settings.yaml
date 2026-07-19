@@ -1,0 +1,92 @@
+# GraphRAG configuration for the AI Exam Assistant.
+# Docs: https://microsoft.github.io/graphrag/config/yaml/
+#
+# Two-model strategy to control cost (entity extraction is ~75% of indexing):
+#   * extraction  -> a cheap model (gpt-5-nano)
+#   * reports/query -> the main chat model (gpt-5.4-mini)
+#
+# Defaults below target Azure OpenAI / Azure AI Foundry with Microsoft Entra
+# (managed identity) auth. For a quick local run against OpenAI, set
+# `type: openai_chat` / `openai_embedding`, `auth_type: api_key`, and export
+# GRAPHRAG_API_KEY. Never commit real keys.
+
+models:
+  default_chat_model:
+    type: azure_openai_chat
+    auth_type: azure_managed_identity   # or api_key (+ GRAPHRAG_API_KEY)
+    model: gpt-5.4-mini
+    deployment_name: gpt-5.4-mini
+    api_base: ${GRAPHRAG_API_BASE}      # https://<resource>.openai.azure.com
+    api_version: 2024-10-21
+    model_supports_json: true
+    concurrent_requests: 10
+
+  extraction_chat_model:
+    type: azure_openai_chat
+    auth_type: azure_managed_identity
+    model: gpt-5-nano
+    deployment_name: gpt-5-nano
+    api_base: ${GRAPHRAG_API_BASE}
+    api_version: 2024-10-21
+    model_supports_json: true
+    concurrent_requests: 15
+
+  default_embedding_model:
+    type: azure_openai_embedding
+    auth_type: azure_managed_identity
+    model: text-embedding-3-large
+    deployment_name: text-embedding-3-large
+    api_base: ${GRAPHRAG_API_BASE}
+    api_version: 2024-10-21
+
+input:
+  type: file
+  file_type: text
+  base_dir: "input"
+
+chunks:
+  size: 1000
+  overlap: 100
+  group_by_columns: [id]
+
+# Keep the LLM extraction cheap by pointing it at the nano deployment.
+extract_graph:
+  model_id: extraction_chat_model
+  entity_types: [concept, service, principle, tool, role, regulation]
+  max_gleanings: 1
+
+summarize_descriptions:
+  model_id: default_chat_model
+  max_length: 500
+
+community_reports:
+  model_id: default_chat_model
+  max_length: 1500
+  max_input_length: 8000
+
+cluster_graph:
+  max_cluster_size: 10
+
+# Local vector store (LanceDB). NOTE: GraphRAG issue #1642 — DRIFT search is
+# unreliable on the Azure AI Search vector store; keep LanceDB for DRIFT.
+vector_store:
+  default_vector_store:
+    type: lancedb
+    db_uri: "lancedb"
+    container_name: default
+    overwrite: true
+
+embed_text:
+  model_id: default_embedding_model
+  vector_store_id: default_vector_store
+
+local_search:
+  chat_model_id: default_chat_model
+  embedding_model_id: default_embedding_model
+
+global_search:
+  chat_model_id: default_chat_model
+
+drift_search:
+  chat_model_id: default_chat_model
+  embedding_model_id: default_embedding_model

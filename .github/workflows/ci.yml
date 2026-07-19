@@ -1,0 +1,67 @@
+name: CI
+
+# Fast, secret-free checks. The backend test-suite runs fully OFFLINE
+# (MODEL_PROVIDER=local uses a deterministic client), so no Azure and no
+# secrets are needed here — anyone can fork and get a green build.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (lint + tests, offline)
+    runs-on: ubuntu-latest
+    env:
+      # Force the offline provider so no Azure/secret is ever touched in CI.
+      MODEL_PROVIDER: local
+      KNOWLEDGE_BACKEND: graphrag
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend (with dev extras)
+        run: python -m pip install --upgrade pip && pip install -e "./backend[dev]"
+
+      - name: Ruff (lint)
+        run: ruff check backend
+
+      - name: Pytest (offline)
+        run: pytest backend -q
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build

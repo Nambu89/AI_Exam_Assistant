@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+#
+# Azure Developer CLI (azd) definition for the AI Exam Assistant.
+# One-command deploy:  azd up   (provisions infra/ then builds & deploys services)
+#
+# Two services are declared. Both are hosted on Azure Container Apps for a single,
+# consistent runtime. azd matches each service to the Container App carrying the
+# tag `azd-service-name: <name>` created in infra/.
+
+name: ai-exam-assistant
+metadata:
+  template: ai-exam-assistant@0.1.0
+
+# Bicep is the source of truth for infrastructure.
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+services:
+  # --- Backend: FastAPI + Microsoft Agent Framework (Python) ---
+  backend:
+    project: ./backend
+    language: python
+    host: containerapp
+    # A Dockerfile in ./backend is used when present; otherwise azd uses the
+    # Oryx buildpack for Python. The image is pushed to the provisioned ACR and
+    # the backend Container App (tag azd-service-name: backend) is updated.
+    docker:
+      path: ./Dockerfile
+      context: .
+
+  # --- Frontend: built static site (Vite) served from a Container App ---
+  frontend:
+    project: ./frontend
+    language: js
+    host: containerapp
+    # `npm run build` produces ./frontend/dist which the Dockerfile serves
+    # (e.g. nginx). The frontend Container App carries tag azd-service-name: frontend.
+    docker:
+      path: ./Dockerfile
+      context: .
+
+# Optional lifecycle hooks (left commented; enable if you want a build-time gate).
+# hooks:
+#   predeploy:
+#     shell: sh
+#     run: cd backend && ruff check . && pytest -q

@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+/* Class-based dark mode toggle (html.dark), not just prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens — see DESIGN.md for the full rationale.
+ * "Study / edu meets Azure": trustworthy Azure blues, a warm teal accent,
+ * soft paper surfaces in light, deep navy-slate in dark. All fg/bg pairs
+ * target WCAG 2.2 AA (>= 4.5:1 body text, >= 3:1 large text / UI).
+ */
+:root {
+  --background: #f6f8fc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --muted: #eef2f8;
+  --muted-foreground: #4b5772;
+  --border: #e2e8f0;
+  --input: #d6dfea;
+  --ring: #0f6cbd;
+
+  --primary: #0f6cbd;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e7f1fb;
+
+  --accent: #e6f4f1;
+  --accent-foreground: #0f5f57;
+
+  --success: #157347;
+  --success-foreground: #ffffff;
+  --success-soft: #e4f4ec;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --warning-soft: #fbf0e2;
+  --danger: #b91c1c;
+  --danger-foreground: #ffffff;
+  --danger-soft: #fbe8e8;
+
+  /* Categorical palette for concept-map communities (light + dark safe). */
+  --community-1: #3b82f6;
+  --community-2: #22c55e;
+  --community-3: #f59e0b;
+  --community-4: #ec4899;
+  --community-5: #a855f7;
+  --community-6: #06b6d4;
+  --community-7: #ef4444;
+  --community-8: #84cc16;
+
+  --radius: 0.75rem;
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+}
+
+.dark {
+  --background: #0b1220;
+  --foreground: #e6edf7;
+  --card: #121a2b;
+  --card-foreground: #e6edf7;
+  --popover: #121a2b;
+  --popover-foreground: #e6edf7;
+  --muted: #1b2436;
+  --muted-foreground: #a3b3cc;
+  --border: #263349;
+  --input: #2a3852;
+  --ring: #4aa3ec;
+
+  --primary: #4aa3ec;
+  --primary-foreground: #041220;
+  --primary-soft: #16273c;
+
+  --accent: #12332f;
+  --accent-foreground: #7fe0d3;
+
+  --success: #34d17f;
+  --success-foreground: #04140b;
+  --success-soft: #12291d;
+  --warning: #f0b354;
+  --warning-foreground: #1c1204;
+  --warning-soft: #2c2412;
+  --danger: #f87171;
+  --danger-foreground: #1c0505;
+  --danger-soft: #2c1414;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-community-1: var(--community-1);
+  --color-community-2: var(--community-2);
+  --color-community-3: var(--community-3);
+  --color-community-4: var(--community-4);
+  --color-community-5: var(--community-5);
+  --color-community-6: var(--community-6);
+  --color-community-7: var(--community-7);
+  --color-community-8: var(--community-8);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-sm: calc(var(--radius) - 0.375rem);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visible, high-contrast keyboard focus everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  }
+
+  /* Themed scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}
+
+@utility bg-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-foreground) 6%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-foreground) 6%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 44px 44px;
+}

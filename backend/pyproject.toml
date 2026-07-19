@@ -1,0 +1,79 @@
+[project]
+name = "ai-exam-assistant"
+version = "0.1.0"
+description = "Open-source multi-agent AI Exam Assistant built on Microsoft Agent Framework, Azure AI Foundry (Foundry IQ) and GraphRAG."
+readme = "../README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Fernando Prada", email = "fernando.prada@devoteam.com" }]
+
+dependencies = [
+    # --- Microsoft Agent Framework (GA, unifies AutoGen + Semantic Kernel) ---
+    # Verified: v1.11.0 on PyPI (2026-07-10), MIT. `agent-framework` pulls the full stack;
+    # `agent-framework-foundry` is the slim core + Azure AI Foundry client.
+    "agent-framework>=1.11.0",
+
+    # --- Web API ---
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sse-starlette>=2.1.0",
+    "python-multipart>=0.0.9",
+
+    # --- Config & validation ---
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "python-dotenv>=1.0.1",
+
+    # --- Azure ---
+    "azure-identity>=1.19.0",
+
+    # --- Knowledge / retrieval ---
+    # GraphRAG (OSS, MIT) — concept-map + global search. Verified v3.1.x (2026-07-18).
+    "graphrag>=3.1.1",
+    # Text extraction for corpus ingestion (PDF -> text before GraphRAG).
+    "pymupdf>=1.24.0",
+
+    # --- Model clients used by the local/dev provider path ---
+    "openai>=1.54.0",
+
+    # --- Utilities ---
+    "httpx>=0.27.2",
+    "tenacity>=9.0.0",
+]
+
+[project.optional-dependencies]
+# Installed in CI and when running the evaluation gate. Kept optional so the
+# core app stays lightweight for the local "try it without Azure" path.
+eval = [
+    "azure-ai-evaluation>=1.0.0",
+    "azure-ai-projects>=1.0.0",
+]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests", "evals"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
