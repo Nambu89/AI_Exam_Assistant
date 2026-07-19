@@ -45,6 +45,13 @@ It ships with a ready-to-index demo corpus for the **Microsoft Azure Fundamental
 
 ## Architecture
 
+![AI Exam Assistant architecture — Microsoft Agent Framework, Azure AI Foundry (Foundry IQ), GraphRAG and GPT-5](docs/images/architecture.png)
+
+> Diagram uses the official Azure architecture icon set. Generation prompt: [`docs/architecture-diagram-prompt.md`](docs/architecture-diagram-prompt.md).
+
+<details>
+<summary>Text version (Mermaid)</summary>
+
 ```mermaid
 flowchart TD
     UI["React 19 + Vite + TS<br/>Chat · Exam Runner · Concept Map · Dashboard"]
@@ -82,6 +89,8 @@ flowchart TD
     EVAL["Evaluation gate (CI)<br/>groundedness · sources · Azure agentic evaluators"]
     API -.-> EVAL
 ```
+
+</details>
 
 **Model roles** (GPT-5 family only; EU Data Zone): `gpt-5.4-mini` tutor · `gpt-5-nano` routing + cheap GraphRAG extraction · `gpt-5.5` deep validation · `gpt-5-mini` evaluation judge · `text-embedding-3-large` embeddings.
 
