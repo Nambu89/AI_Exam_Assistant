@@ -38,6 +38,9 @@ param location string = 'swedencentral'
 @description('Object id of the user/service principal running the deploy. Granted data-plane roles so a human can also use the resources. azd populates AZURE_PRINCIPAL_ID.')
 param principalId string = ''
 
+@description('When true, provision a VNet + Private Endpoints + Private DNS and disable public access on the AI/data services (matches the "no public internet" architecture). When false, fall back to the public-with-managed-identity setup so anyone without networking quota can still `azd up`.')
+param deployPrivateNetworking bool = true
+
 // --- GPT-5 family deployment names (never GPT-4, per project policy) ---
 @description('Tutor / general reasoning model deployment name.')
 param chatModel string = 'gpt-5.4-mini'
@@ -74,7 +77,23 @@ resource rg 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   tags: tags
 }
 
+// Derived access flags: when private networking is on, backing services are
+// closed to the public internet and reached only over Private Endpoints.
+var publicAccessCog = deployPrivateNetworking ? 'Disabled' : 'Enabled'
+var publicAccessSearch = deployPrivateNetworking ? 'disabled' : 'enabled'
+
 // ------------------------------- Modules -------------------------------------
+
+// --- Networking (VNet + subnets + Private DNS): only when enabled ---
+module network 'modules/network.bicep' = if (deployPrivateNetworking) {
+  name: 'network'
+  scope: rg
+  params: {
+    name: 'vnet-${prefix}-${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
 
 // --- User-assigned managed identity (consumed by the Container Apps) ---
 module identity 'modules/identity.bicep' = {
@@ -109,6 +128,7 @@ module keyVault 'modules/keyvault.bicep' = {
     tags: tags
     // Grant the MI (and the deploying principal) Key Vault Secrets User.
     principalIds: union([identity.outputs.principalId], empty(principalId) ? [] : [principalId])
+    publicNetworkAccess: publicAccessCog
   }
 }
 
@@ -126,6 +146,7 @@ module search 'modules/search.bicep' = {
       [identity.outputs.principalId, foundry.outputs.accountPrincipalId],
       empty(principalId) ? [] : [principalId]
     )
+    publicNetworkAccess: publicAccessSearch
   }
 }
 
@@ -148,6 +169,7 @@ module foundry 'modules/ai-foundry.bicep' = {
     ]
     // MI (and deployer) get Azure AI User for data-plane calls.
     principalIds: union([identity.outputs.principalId], empty(principalId) ? [] : [principalId])
+    publicNetworkAccess: publicAccessCog
   }
 }
 
@@ -161,6 +183,8 @@ module registry 'modules/registry.bicep' = {
     tags: tags
     // MI pulls images with AcrPull (no admin user / no credentials).
     pullPrincipalId: identity.outputs.principalId
+    // Disabling public access auto-bumps ACR to Premium (PE requires Premium).
+    publicNetworkAccess: publicAccessCog
   }
 }
 
@@ -192,6 +216,32 @@ module containerApps 'modules/container-apps.bicep' = {
     reasoningModel: reasoningModel
     judgeModel: judgeModel
     embeddingModel: embeddingModel
+    // VNet-inject the environment when private networking is on ('' = public fallback).
+    infrastructureSubnetId: deployPrivateNetworking ? network!.outputs.infraSubnetId : ''
+  }
+}
+
+// --- Private Endpoints for the backing services (only when enabled) ---
+module privateEndpoints 'modules/private-endpoints.bicep' = if (deployPrivateNetworking) {
+  name: 'private-endpoints'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    peSubnetId: network!.outputs.peSubnetId
+    foundryAccountId: foundry.outputs.accountId
+    searchId: search.outputs.id
+    keyVaultId: keyVault.outputs.id
+    acrId: registry.outputs.id
+    // AIServices account resolves via all three AI private DNS zones.
+    foundryDnsZoneIds: [
+      network!.outputs.dnsZoneIds['privatelink.cognitiveservices.azure.com']
+      network!.outputs.dnsZoneIds['privatelink.openai.azure.com']
+      network!.outputs.dnsZoneIds['privatelink.services.ai.azure.com']
+    ]
+    searchDnsZoneId: network!.outputs.dnsZoneIds['privatelink.search.windows.net']
+    keyVaultDnsZoneId: network!.outputs.dnsZoneIds['privatelink.vaultcore.azure.net']
+    acrDnsZoneId: network!.outputs.dnsZoneIds['privatelink.azurecr.io']
   }
 }
 
@@ -201,6 +251,10 @@ module containerApps 'modules/container-apps.bicep' = {
 output AZURE_LOCATION string = location
 output AZURE_RESOURCE_GROUP string = rg.name
 output AZURE_TENANT_ID string = tenant().tenantId
+
+// Networking posture (empty vnet id when running the public fallback).
+output PRIVATE_NETWORKING_ENABLED bool = deployPrivateNetworking
+output AZURE_VNET_ID string = deployPrivateNetworking ? network!.outputs.vnetId : ''
 
 output AZURE_CLIENT_ID string = identity.outputs.clientId
 output AZURE_MANAGED_IDENTITY_ID string = identity.outputs.id

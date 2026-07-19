@@ -10,6 +10,13 @@ param tags object = {}
 @description('Principal ids granted Key Vault Secrets User (data plane read of secrets).')
 param principalIds array = []
 
+@description('Public network access. Set to Disabled when fronting the vault with a Private Endpoint.')
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+param publicNetworkAccess string = 'Enabled'
+
 // Built-in role: Key Vault Secrets User
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
@@ -27,7 +34,12 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
     enableRbacAuthorization: true
     enableSoftDelete: true
     softDeleteRetentionInDays: 7
-    publicNetworkAccess: 'Enabled'
+    // Public exposure toggled by the caller; a Private Endpoint fronts it when disabled.
+    publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: publicNetworkAccess == 'Disabled' ? 'Deny' : 'Allow'
+      bypass: 'AzureServices'
+    }
   }
 }
 

@@ -112,6 +112,15 @@ Defense in depth: a lexical prompt-injection filter (always on) plus optional
 Key Vault; observability is OpenTelemetry → Application Insights. The app never
 processes confidential data and the demo corpus is public study material.
 
+**Network isolation** (`deployPrivateNetworking=true`, the default): all backing
+services — Azure AI Foundry/AIServices, Azure AI Search, Key Vault and the
+container registry — are reached over **Private Endpoints (Private Link)** inside
+a dedicated **VNet**, with `publicNetworkAccess: Disabled` and default-deny
+network ACLs, and the Container Apps environment is VNet-injected. The web app's
+ingress is the only public surface. Set the flag to `false` to fall back to the
+public + managed-identity setup (e.g. when you lack networking quota). See
+[`infra/README.md`](infra/README.md).
+
 ## <a name="version-notes"></a>Version notes (verified 2026-07-19)
 
 - **Microsoft Agent Framework** GA `1.11` (unifies AutoGen + Semantic Kernel).

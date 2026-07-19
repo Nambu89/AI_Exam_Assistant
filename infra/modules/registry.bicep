@@ -10,6 +10,17 @@ param tags object = {}
 @description('Principal id of the managed identity granted AcrPull.')
 param pullPrincipalId string
 
+@description('Public network access. Set to Disabled when fronting the registry with a Private Endpoint.')
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+param publicNetworkAccess string = 'Enabled'
+
+// Private Endpoints require the Premium SKU (Basic/Standard are NOT supported),
+// so we auto-bump to Premium whenever public access is disabled.
+var sku = publicNetworkAccess == 'Disabled' ? 'Premium' : 'Basic'
+
 // Built-in role: AcrPull
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 
@@ -18,10 +29,13 @@ resource registry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = 
   location: location
   tags: tags
   sku: {
-    name: 'Basic'
+    name: sku
   }
   properties: {
     adminUserEnabled: false
+    publicNetworkAccess: publicNetworkAccess
+    // Let trusted Azure services (e.g. ACR Tasks builds) reach the registry.
+    networkRuleBypassOptions: 'AzureServices'
   }
 }
 

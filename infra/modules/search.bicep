@@ -11,6 +11,13 @@ param tags object = {}
 @description('Principal ids granted Search data + service roles.')
 param principalIds array = []
 
+@description('Public network access. Set to disabled when fronting the service with a Private Endpoint.')
+@allowed([
+  'enabled'
+  'disabled'
+])
+param publicNetworkAccess string = 'enabled'
+
 // Built-in roles
 var searchIndexDataContributorRoleId = '8ebe5a00-799e-43f5-93ac-243d3dce84a7' // read/write index documents
 var searchServiceContributorRoleId = '7ca78c08-252a-4471-8644-bb5ff32d4ba0'   // manage indexes/indexers/knowledge
@@ -31,7 +38,12 @@ resource search 'Microsoft.Search/searchServices@2025-05-01' = {
     disableLocalAuth: true
     hostingMode: 'Default'
     semanticSearch: 'standard' // required for Foundry IQ agentic retrieval + semantic ranking
-    publicNetworkAccess: 'enabled'
+    // Public exposure toggled by the caller; a Private Endpoint fronts it when disabled.
+    publicNetworkAccess: publicNetworkAccess
+    networkRuleSet: {
+      // With a Private Endpoint, allow trusted Azure services (e.g. Foundry) to bypass.
+      bypass: 'AzureServices'
+    }
   }
   identity: {
     type: 'SystemAssigned'

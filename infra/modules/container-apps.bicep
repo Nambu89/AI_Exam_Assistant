@@ -40,6 +40,9 @@ param logAnalyticsSharedKey string
 @description('Application Insights connection string (OpenTelemetry sink).')
 param appInsightsConnectionString string
 
+@description('Container Apps infrastructure subnet id for VNet injection. Empty = no VNet (public fallback).')
+param infrastructureSubnetId string = ''
+
 // --- App configuration wired to provisioned services ---
 param foundryProjectEndpoint string
 param contentSafetyEndpoint string
@@ -50,7 +53,14 @@ param reasoningModel string
 param judgeModel string
 param embeddingModel string
 
+var vnetEnabled = !empty(infrastructureSubnetId)
+
 // --- Managed environment ---
+// When a subnet is supplied the environment is VNet-injected with a Consumption
+// workload profile (required for injection). `internal: false` keeps the app
+// ingress public — the only intended public surface — while the environment
+// reaches the backing services privately over the Private Endpoints. VNet-linked
+// Private DNS zones give the apps automatic private-IP resolution.
 resource environment 'Microsoft.App/managedEnvironments@2025-07-01' = {
   name: environmentName
   location: location
@@ -63,6 +73,20 @@ resource environment 'Microsoft.App/managedEnvironments@2025-07-01' = {
         sharedKey: logAnalyticsSharedKey
       }
     }
+    workloadProfiles: vnetEnabled
+      ? [
+          {
+            name: 'Consumption'
+            workloadProfileType: 'Consumption'
+          }
+        ]
+      : null
+    vnetConfiguration: vnetEnabled
+      ? {
+          infrastructureSubnetId: infrastructureSubnetId
+          internal: false
+        }
+      : null
   }
 }
 

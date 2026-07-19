@@ -24,6 +24,13 @@ param modelDeployments array
 @description('Principal ids granted the Azure AI User data-plane role on the account.')
 param principalIds array = []
 
+@description('Public network access. Set to Disabled when fronting the account with a Private Endpoint.')
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+param publicNetworkAccess string = 'Enabled'
+
 // Built-in role: Azure AI User (a.k.a. "Foundry User" after the 2026 rename).
 // Use the GUID, not the name, because the display name changed during the rename.
 var azureAiUserRoleId = '53ca6127-db72-4b80-b1b0-d745d6d5456d'
@@ -47,7 +54,11 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     allowProjectManagement: true
     // Keyless: force Entra ID auth on the data plane, disable account keys.
     disableLocalAuth: true
-    publicNetworkAccess: 'Enabled'
+    // Public exposure toggled by the caller; denied entirely when private.
+    publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: publicNetworkAccess == 'Disabled' ? 'Deny' : 'Allow'
+    }
   }
 }
 
